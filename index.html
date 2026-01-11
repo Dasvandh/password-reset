@@ -8,8 +8,8 @@
   <style>
     * {
       box-sizing: border-box;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        Roboto, Ubuntu, Cantarell;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, Ubuntu, Cantarell;
     }
 
     body {
@@ -22,24 +22,12 @@
     }
 
     .card {
-      background: #fff;
+      background: #ffffff;
       width: 100%;
       max-width: 380px;
       padding: 28px;
       border-radius: 14px;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-      animation: fadeIn 0.4s ease;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
     }
 
     h1 {
@@ -49,7 +37,7 @@
     }
 
     p {
-      margin: 0 0 20px;
+      margin: 0 0 18px;
       font-size: 14px;
       color: #666;
       text-align: center;
@@ -72,7 +60,7 @@
       border-radius: 8px;
       border: none;
       background: #2c5364;
-      color: white;
+      color: #fff;
       cursor: pointer;
     }
 
@@ -100,7 +88,7 @@
 <body>
   <div class="card">
     <h1>Reset Password</h1>
-    <p>Create a new password</p>
+    <p>Create a new password for your account</p>
 
     <input
       id="password"
@@ -108,7 +96,7 @@
       placeholder="New password (min 6 characters)"
     />
 
-    <button id="btn" onclick="resetPassword()">Update Password</button>
+    <button id="btn" disabled>Update Password</button>
 
     <div id="msg" class="msg"></div>
   </div>
@@ -123,31 +111,39 @@
 
   const msg = document.getElementById("msg");
   const btn = document.getElementById("btn");
+  const passwordInput = document.getElementById("password");
 
-  // ✅ 1. Extract the code from URL
+  let sessionReady = false;
+
+  // 1️⃣ Try CODE flow (?code=...)
   const params = new URLSearchParams(window.location.search);
   const code = params.get("code");
 
-  if (!code) {
-    msg.innerText = "Invalid reset link. Please request a new one.";
-    msg.className = "msg error";
-    btn.disabled = true;
-    throw new Error("No recovery code in URL");
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) sessionReady = true;
   }
 
-  // ✅ 2. Exchange ONLY the code (THIS IS THE FIX)
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  // 2️⃣ Try HASH recovery flow (#access_token=...)
+  if (!sessionReady) {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session) sessionReady = true;
+  }
 
-  if (error) {
+  // ❌ No valid recovery session
+  if (!sessionReady) {
     msg.innerText =
-      "Invalid or expired reset link. Please request a new one.";
+      "This reset link is invalid or expired. Please request a new one.";
     msg.className = "msg error";
     btn.disabled = true;
+    throw new Error("No valid recovery session");
   }
 
-  // ✅ 3. Reset password
-  window.resetPassword = async () => {
-    const password = document.getElementById("password").value;
+  // ✅ Enable button
+  btn.disabled = false;
+
+  btn.onclick = async () => {
+    const password = passwordInput.value;
 
     if (password.length < 6) {
       msg.innerText = "Password must be at least 6 characters.";
@@ -167,7 +163,7 @@
       btn.innerText = "Update Password";
     } else {
       msg.innerText =
-        "Password updated successfully. You can return to the app.";
+        "Password updated successfully. You can now return to the app.";
       msg.className = "msg success";
       btn.innerText = "Done";
     }
