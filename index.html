@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Reset Password</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 16px;
+    }
+    button {
+      background: #2e7d32;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #999;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2>Reset your password</h2>
+
+    <input
+      id="password"
+      type="password"
+      placeholder="New password"
+    />
+
+    <button onclick="resetPassword()">Update Password</button>
+
+    <p id="msg"></p>
+  </div>
+
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+    const supabase = createClient(
+      "https://hjvsxridquolfrddlbpp.supabase.co",
+      "YOUR_PUBLIC_ANON_KEY_HERE"
+    );
+
+    window.resetPassword = async () => {
+      const password = document.getElementById("password").value;
+      const msg = document.getElementById("msg");
+
+      if (password.length < 6) {
+        msg.innerText = "Password must be at least 6 characters.";
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({
+        password: password,
+      });
+
+      if (error) {
+        msg.innerText = error.message;
+      } else {
+        msg.innerText =
+          "Password updated successfully. You can now return to the app and log in.";
+      }
+    };
+  </script>
+</body>
+</html>
