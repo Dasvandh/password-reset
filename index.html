@@ -113,59 +113,66 @@
     <div id="msg" class="msg"></div>
   </div>
 
-  <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js";
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
-    const supabase = createClient(
-      "https://hjvsxridquolfrddlbpp.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqdnN4cmlkcXVvbGZyZGRsYnBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMDMxNTEsImV4cCI6MjA4MzY3OTE1MX0.-54QtJFfCLbDQCnEaAApSFjCHm2IkIdokV2LuroevCE"
-    );
+  const supabase = createClient(
+    "https://hjvsxridquolfrddlbpp.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhqdnN4cmlkcXVvbGZyZGRsYnBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMDMxNTEsImV4cCI6MjA4MzY3OTE1MX0.-54QtJFfCLbDQCnEaAApSFjCHm2IkIdokV2LuroevCE"
+  );
 
-    const msg = document.getElementById("msg");
-    const btn = document.getElementById("btn");
+  const msg = document.getElementById("msg");
+  const btn = document.getElementById("btn");
 
-    // 🔑 THIS IS THE FIX (DO NOT REMOVE)
-    const { error: exchangeError } =
-      await supabase.auth.exchangeCodeForSession(window.location.href);
+  // ✅ 1. Extract the code from URL
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get("code");
 
-    if (exchangeError) {
-      msg.innerText =
-        "Invalid or expired reset link. Please request a new one.";
+  if (!code) {
+    msg.innerText = "Invalid reset link. Please request a new one.";
+    msg.className = "msg error";
+    btn.disabled = true;
+    throw new Error("No recovery code in URL");
+  }
+
+  // ✅ 2. Exchange ONLY the code (THIS IS THE FIX)
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error) {
+    msg.innerText =
+      "Invalid or expired reset link. Please request a new one.";
+    msg.className = "msg error";
+    btn.disabled = true;
+  }
+
+  // ✅ 3. Reset password
+  window.resetPassword = async () => {
+    const password = document.getElementById("password").value;
+
+    if (password.length < 6) {
+      msg.innerText = "Password must be at least 6 characters.";
       msg.className = "msg error";
-      btn.disabled = true;
+      return;
     }
 
-    window.resetPassword = async () => {
-      const password = document.getElementById("password").value;
+    btn.disabled = true;
+    btn.innerText = "Updating...";
 
-      msg.innerText = "";
-      msg.className = "msg";
+    const { error } = await supabase.auth.updateUser({ password });
 
-      if (password.length < 6) {
-        msg.innerText = "Password must be at least 6 characters.";
-        msg.classList.add("error");
-        return;
-      }
+    if (error) {
+      msg.innerText = error.message;
+      msg.className = "msg error";
+      btn.disabled = false;
+      btn.innerText = "Update Password";
+    } else {
+      msg.innerText =
+        "Password updated successfully. You can return to the app.";
+      msg.className = "msg success";
+      btn.innerText = "Done";
+    }
+  };
+</script>
 
-      btn.disabled = true;
-      btn.innerText = "Updating...";
-
-      const { error } = await supabase.auth.updateUser({
-        password,
-      });
-
-      if (error) {
-        msg.innerText = error.message;
-        msg.className = "msg error";
-        btn.disabled = false;
-        btn.innerText = "Update Password";
-      } else {
-        msg.innerText =
-          "Password updated successfully. You can now return to the app.";
-        msg.className = "msg success";
-        btn.innerText = "Done";
-      }
-    };
-  </script>
 </body>
 </html>
